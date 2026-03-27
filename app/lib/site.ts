@@ -2,7 +2,7 @@ export const siteConfig = {
   name: "Deer Flow Guide",
   description:
     "Deer Flow Guide explains what deer flow is, how the AI agent workflow works, and how to get started.",
-  url: (process.env.NEXT_PUBLIC_SITE_URL || "https://deer-flow-guide.vercel.app").replace(
+  url: (process.env.NEXT_PUBLIC_SITE_URL || "https://githubbox.info").replace(
     /\/$/,
     "",
   ),
