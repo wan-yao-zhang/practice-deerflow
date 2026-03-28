@@ -1,5 +1,4 @@
-﻿User-agent: *
+User-agent: *
 Allow: /
 
-Host: https://githubbox.info
 Sitemap: https://githubbox.info/sitemap.xml
