@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Githubbox Sitemap Monitor
 
-## Getting Started
+Public sitemap monitoring tool. Live at **https://githubbox.info**.
 
-First, run the development server:
+## Features (v1)
+
+- Add sites (domain + optional sitemap URL); auto-detect `/sitemap.xml`, `/sitemap_index.xml`, `/sitemap-index.xml`, and `robots.txt` Sitemap lines
+- Daily cron scan + manual admin trigger
+- Baseline first scan (no “new” flood); later scans create discoveries
+- Fetch Title / meta description / H1 for new URLs; rule-based CJK-friendly keywords
+- Chinese UI: feed, sites library, site detail, page detail, scan logs
+- Disable/enable/delete sites; multi-select type tags
+
+## Stack
+
+- Cloudflare Worker `githubbox` + Hono SSR HTML (dark theme)
+- D1 database `githubbox-sitemap` (`c82225d3-1b97-4c75-8afc-88d6ee71773e`)
+- Cron: `0 2 * * *` UTC ≈ **10:00 Asia/Shanghai**
+- Custom domain: `githubbox.info`
+- Secret: `ADMIN_TOKEN` (Workers secret)
+
+## Local / deploy
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+export CLOUDFLARE_ACCOUNT_ID=2841f91d4691f01dde7f0d98efa8f87f
+npm install
+npx wrangler types
+npm run db:migrate:remote   # needs D1 edit token
+printf '%s' "$ADMIN_TOKEN" | npx wrangler secret put ADMIN_TOKEN
+npm run deploy
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Note: Account API tokens without Workers Scripts Write must deploy via the Cloudflare dashboard/API. This project’s production deploy used the Cloudflare MCP upload path.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Manual scan
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+curl "https://githubbox.info/api/scan?token=YOUR_ADMIN_TOKEN"
+curl "https://githubbox.info/api/scan?token=YOUR_ADMIN_TOKEN&site_id=1"
+curl -X POST -H "x-admin-token: YOUR_ADMIN_TOKEN" https://githubbox.info/api/scan
+```
 
-## Learn More
+UI also has “立即扫描此站” on each site detail page (no token; public write in v1).
 
-To learn more about Next.js, take a look at the following resources:
+## Limits / risks
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Max ~5000 URLs per site; sitemap depth ≤ 3; gzip `.xml.gz` not supported in v1
+- TDH fetch capped at 40 new URLs per site per scan
+- Public write (anyone can add/delete sites) — no login in v1
+- Worker CPU/time: very large sitemap indexes may hit limits; prefer per-site manual scans when needed
+- `compatibility_date` set to `2026-10-30` (Cloudflare API rejected `2026-11-04` as “future” at deploy time)

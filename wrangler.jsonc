@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "githubbox",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-30",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "account_id": "2841f91d4691f01dde7f0d98efa8f87f",
+  "workers_dev": true,
+  "preview_urls": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    }
+  },
+  "triggers": {
+    "crons": [
+      "0 2 * * *"
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "githubbox.info",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "githubbox-sitemap",
+      "database_id": "c82225d3-1b97-4c75-8afc-88d6ee71773e",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "Githubbox Sitemap Monitor",
+    "USER_AGENT": "GithubboxSitemapMonitor/1.0 (+https://githubbox.info)"
+  }
+}
