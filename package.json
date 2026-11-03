@@ -1,26 +1,22 @@
 {
-  "name": "practice-deerflow",
-  "version": "0.1.0",
+  "name": "githubbox-sitemap",
+  "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply githubbox-sitemap --local",
+    "db:migrate:remote": "wrangler d1 migrations apply githubbox-sitemap --remote"
   },
   "dependencies": {
-    "next": "16.2.1",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "hono": "^4.9.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.1",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@cloudflare/workers-types": "^4.20251103.0",
+    "@types/node": "^26.6.6",
+    "typescript": "^5.9.0",
+    "wrangler": "^4.86.0"
   }
 }
