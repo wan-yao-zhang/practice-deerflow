@@ -10,7 +10,7 @@ export function escapeHtml(s: string | null | undefined): string {
 
 export function layout(opts: {
   title: string;
-  active: "home" | "sites" | "runs";
+  active: "home" | "sites" | "runs" | "keywords";
   body: string;
   flash?: string | null;
 }): string {
@@ -133,6 +133,7 @@ export function layout(opts: {
       </div>
       <nav>
         ${nav("home", "/", "新页面")}
+        ${nav("keywords", "/keywords", "关键词动态")}
         ${nav("sites", "/sites", "站点库")}
         ${nav("runs", "/runs", "扫描日志")}
       </nav>

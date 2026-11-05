@@ -1,3 +1,4 @@
+import { keywordRoutes } from "./ui/keywords";
 import { extractPrimaryKeyword } from "./lib/primary-keyword";
 import { Hono } from "hono";
 import { extractKeywords } from "./lib/keywords";
@@ -11,6 +12,7 @@ import { escapeHtml, layout } from "./ui/layout";
 type AppEnv = { Bindings: Env };
 
 const app = new Hono<AppEnv>();
+app.route("/keywords", keywordRoutes);
 
 function normalizeDomain(input: string): string | null {
   let s = input.trim().toLowerCase();
