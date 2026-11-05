@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { extractPrimaryKeyword as get } from './src/lib/primary-keyword.ts';
+assert.equal(get('https://x.com/tools/ai-logo-generator/','Free AI Logo Generator Online',null),'ai logo generator');
+assert.equal(get('https://x.com/art','Cart tools',null),null);
+assert.equal(get('https://x.com/ai_logo_generator.html?ref=1',null,'AI–Logo Generator'),'ai logo generator');
+assert.equal(get('https://x.com/123', '123', null), null);
+assert.equal(get('https://x.com/%E4%BA%A7%E5%93%81','产品',null),'产品');
+assert.equal(get('https://x.com/%ZZ','anything',null),null);
+assert.equal(get('https://x.com/logo-generator','Other topic','Other topic'),null);
+assert.equal(get('https://x.com/', 'Home', null), null);
+console.log('8 keyword checks passed');

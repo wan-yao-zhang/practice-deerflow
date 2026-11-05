@@ -1,3 +1,4 @@
+import { extractPrimaryKeyword } from "../lib/primary-keyword";
 import { extractTdh } from "../lib/html";
 import { extractKeywords } from "../lib/keywords";
 import { fetchRobots, isAllowed } from "../lib/robots";
@@ -146,9 +147,9 @@ async function fetchAndStoreTdh(
     const tdh = extractTdh(html);
     await db
       .prepare(
-        `UPDATE discoveries SET title = ?, meta_description = ?, h1 = ?, fetch_status = 'ok', fetch_error = NULL WHERE id = ?`,
+        `UPDATE discoveries SET title = ?, meta_description = ?, h1 = ?, primary_keyword = ?, fetch_status = 'ok', fetch_error = NULL WHERE id = ?`,
       )
-      .bind(tdh.title, tdh.meta_description, tdh.h1, discoveryId)
+      .bind(tdh.title, tdh.meta_description, tdh.h1, extractPrimaryKeyword(url, tdh.title, tdh.h1), discoveryId)
       .run();
 
     const kws = extractKeywords(tdh.title, tdh.meta_description, tdh.h1);
@@ -418,3 +419,4 @@ export async function runAllScans(
 
   return { sites: (sites.results || []).length, ok, fail };
 }
+

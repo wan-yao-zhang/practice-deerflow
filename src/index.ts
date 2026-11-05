@@ -1,3 +1,4 @@
+import { extractPrimaryKeyword } from "./lib/primary-keyword";
 import { Hono } from "hono";
 import { extractKeywords } from "./lib/keywords";
 import { detectSitemapUrl } from "./lib/sitemap";
@@ -103,11 +104,11 @@ app.get("/", async (c) => {
   }
   if (q) {
     sql += ` AND (
-      d.title LIKE ? OR d.meta_description LIKE ? OR d.h1 LIKE ? OR d.url LIKE ?
+      d.primary_keyword LIKE ? OR d.title LIKE ? OR d.meta_description LIKE ? OR d.h1 LIKE ? OR d.url LIKE ?
       OR EXISTS (SELECT 1 FROM keywords k WHERE k.discovery_id = d.id AND k.keyword LIKE ?)
     )`;
     const like = `%${q}%`;
-    params.push(like, like, like, like, like);
+    params.push(like, like, like, like, like, like);
   }
   sql += ` ORDER BY d.first_seen_at DESC LIMIT 100`;
 
@@ -148,6 +149,7 @@ app.get("/", async (c) => {
           <div class="url"><a href="${escapeHtml(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.url)}</a></div>
           <div style="margin-top:6px">${kws || '<span class="muted">无关键词</span>'}</div>
         </td>
+        <td>${escapeHtml(d.primary_keyword || extractPrimaryKeyword(d.url, d.title, d.h1) || "—")}</td>
         <td><a href="/sites/${d.site_id}">${escapeHtml(d.domain || "")}</a></td>
         <td>${escapeHtml(toShanghai(d.first_seen_at))}</td>
         <td><span class="status ${escapeHtml(d.fetch_status)}">${escapeHtml(d.fetch_status)}</span></td>
@@ -196,7 +198,7 @@ app.get("/", async (c) => {
       ${(discoveries.results || []).length === 0
         ? `<div class="empty">暂无新页面。首次扫描仅建立基线，不会产生“新页面”；请添加站点并在第二次扫描后查看。</div>`
         : `<table>
-            <thead><tr><th>页面</th><th>站点</th><th>首次发现</th><th>抓取</th></tr></thead>
+            <thead><tr><th>页面</th><th>主关键词</th><th>站点</th><th>首次发现</th><th>抓取</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>`}
     </div>`;
@@ -512,6 +514,7 @@ app.get("/pages/:id", async (c) => {
       ${row.source_sitemap ? `<p class="muted url">来源 Sitemap：${escapeHtml(row.source_sitemap)}</p>` : ""}
       ${row.fetch_error ? `<p class="status fail">${escapeHtml(row.fetch_error)}</p>` : ""}
       <dl class="tdh">
+        <dt>主关键词</dt><dd>${escapeHtml(row.primary_keyword || extractPrimaryKeyword(row.url, row.title, row.h1) || "未确认")}</dd>
         <dt>Title</dt><dd>${escapeHtml(row.title || "—")}</dd>
         <dt>Meta Description</dt><dd>${escapeHtml(row.meta_description || "—")}</dd>
         <dt>H1</dt><dd>${escapeHtml(row.h1 || "—")}</dd>
@@ -648,3 +651,4 @@ export default {
     ctx.waitUntil(runAllScans(env, "cron"));
   },
 } satisfies ExportedHandler<Env>;
+

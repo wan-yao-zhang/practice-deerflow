@@ -42,6 +42,7 @@ export interface DiscoveryRow {
   title: string | null;
   meta_description: string | null;
   h1: string | null;
+  primary_keyword: string | null;
   fetch_status: string;
   fetch_error: string | null;
   first_seen_at: string;
@@ -59,3 +60,4 @@ export interface ScanRunRow {
   error_message: string | null;
   trigger_type: string;
 }
+
