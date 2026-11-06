@@ -22,6 +22,7 @@ export const ALL_TAGS: TagKey[] = [
 export interface SiteRow {
   id: number;
   domain: string;
+  reference_domain: string | null;
   sitemap_url: string | null;
   enabled: number;
   status: SiteStatus;
@@ -47,6 +48,7 @@ export interface DiscoveryRow {
   fetch_error: string | null;
   first_seen_at: string;
   domain?: string;
+  reference_domain?: string | null;
 }
 
 export interface ScanRunRow {

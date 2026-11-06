@@ -15,5 +15,8 @@ SELECT w.*, (
  SELECT group_concat(s.domain, ', ') FROM site_words sw
  JOIN sites s ON s.id = sw.site_id
  WHERE sw.keyword = w.keyword AND sw.site_first_seen = w.first_seen
-) AS first_sites FROM words w
+ ) AS first_sites, (
+ SELECT group_concat(DISTINCT s.reference_domain) FROM site_words sw
+ JOIN sites s ON s.id = sw.site_id WHERE sw.keyword = w.keyword
+) AS reference_domains FROM words w
 `;

@@ -1,3 +1,4 @@
+import { normalizeReference, referenceLink } from "./lib/reference";
 import { keywordRoutes } from "./ui/keywords";
 import { extractPrimaryKeyword } from "./lib/primary-keyword";
 import { Hono } from "hono";
@@ -91,7 +92,7 @@ app.get("/", async (c) => {
 
   const params: unknown[] = [since];
   let sql = `
-    SELECT d.*, s.domain
+    SELECT d.*, s.domain, s.reference_domain
     FROM discoveries d
     JOIN sites s ON s.id = d.site_id
     WHERE d.first_seen_at >= ?
@@ -152,6 +153,7 @@ app.get("/", async (c) => {
           <div style="margin-top:6px">${kws || '<span class="muted">无关键词</span>'}</div>
         </td>
         <td>${escapeHtml(d.primary_keyword || extractPrimaryKeyword(d.url, d.title, d.h1) || "—")}</td>
+        <td>${referenceLink(d.reference_domain)}</td>
         <td><a href="/sites/${d.site_id}">${escapeHtml(d.domain || "")}</a></td>
         <td>${escapeHtml(toShanghai(d.first_seen_at))}</td>
         <td><span class="status ${escapeHtml(d.fetch_status)}">${escapeHtml(d.fetch_status)}</span></td>
@@ -200,7 +202,7 @@ app.get("/", async (c) => {
       ${(discoveries.results || []).length === 0
         ? `<div class="empty">暂无新页面。首次扫描仅建立基线，不会产生“新页面”；请添加站点并在第二次扫描后查看。</div>`
         : `<table>
-            <thead><tr><th>页面</th><th>主关键词</th><th>站点</th><th>首次发现</th><th>抓取</th></tr></thead>
+            <thead><tr><th>页面</th><th>主关键词</th><th>参考网站</th><th>站点</th><th>首次发现</th><th>抓取</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>`}
     </div>`;
@@ -234,7 +236,7 @@ app.get("/sites", async (c) => {
       : `<table>
         <thead>
           <tr>
-            <th>域名</th><th>类型</th><th>状态</th><th>URL数</th><th>近7天新增</th><th>上次扫描</th><th>操作</th>
+            <th>域名</th><th>参考网站</th><th>类型</th><th>状态</th><th>URL数</th><th>近7天新增</th><th>上次扫描</th><th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -247,6 +249,11 @@ app.get("/sites", async (c) => {
                   ${s.enabled ? "" : ' <span class="chip">已停用</span>'}
                   <div class="url muted">${escapeHtml(s.sitemap_url || "自动检测")}</div>
                 </td>
+                <td><form method="post" action="/sites/${s.id}/reference" class="stack">
+                  <div>${referenceLink(s.reference_domain)}</div>
+                  <input name="reference_domain" aria-label="参考网站" placeholder="example.com" value="${escapeHtml(s.reference_domain || "")}" />
+                  <button class="secondary" type="submit">保存</button>
+                </form></td>
                 <td>${tagChips(tags)}</td>
                 <td><span class="status ${escapeHtml(s.status)}">${escapeHtml(statusLabel(s.status))}</span></td>
                 <td>${s.url_count}</td>
@@ -385,6 +392,7 @@ app.get("/sites/:id", async (c) => {
       </div>
       <p class="url">Sitemap：${escapeHtml(site.sitemap_url || "（未设置）")}</p>
       <p>类型：${tagChips(tags)}</p>
+      <p>参考网站：${referenceLink(site.reference_domain)}</p>
       ${site.last_error ? `<p class="status fail">错误：${escapeHtml(site.last_error)}</p>` : ""}
       <div class="actions" style="margin-top:12px">
         <form method="post" action="/sites/${id}/scan"><button type="submit">立即扫描此站</button></form>
@@ -451,6 +459,17 @@ app.get("/sites/:id", async (c) => {
   );
 });
 
+app.post("/sites/:id/reference", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (!Number.isSafeInteger(id) || id <= 0) return c.notFound();
+  const form = await c.req.formData();
+  const input = String(form.get("reference_domain") || "").trim();
+  const domain = normalizeReference(input);
+  if (input && !domain) return c.redirect("/sites?flash=" + encodeURIComponent("参考网站域名无效"));
+  await c.env.DB.prepare("UPDATE sites SET reference_domain = ?, updated_at = datetime('now') WHERE id = ?").bind(domain, id).run();
+  return c.redirect("/sites?flash=" + encodeURIComponent("参考网站已保存"));
+});
+
 app.post("/sites/:id/toggle", async (c) => {
   const id = Number(c.req.param("id"));
   await c.env.DB.prepare(
@@ -488,7 +507,7 @@ app.get("/pages/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const row = await c.env.DB
     .prepare(
-      `SELECT d.*, s.domain FROM discoveries d JOIN sites s ON s.id = d.site_id WHERE d.id = ?`,
+      `SELECT d.*, s.domain, s.reference_domain FROM discoveries d JOIN sites s ON s.id = d.site_id WHERE d.id = ?`,
     )
     .bind(id)
     .first<DiscoveryRow>();
@@ -509,6 +528,7 @@ app.get("/pages/:id", async (c) => {
       <h2>${escapeHtml(row.title || "（无标题）")}</h2>
       <div class="meta-row">
         <span>站点：<a href="/sites/${row.site_id}">${escapeHtml(row.domain || "")}</a></span>
+        <span>参考网站：${referenceLink(row.reference_domain)}</span>
         <span>首次发现：${escapeHtml(toShanghai(row.first_seen_at))}</span>
         <span>抓取：${escapeHtml(row.fetch_status)}</span>
       </div>
