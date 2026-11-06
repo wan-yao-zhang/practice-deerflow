@@ -370,7 +370,7 @@ export async function runAllScans(
     .first<{ id: number }>();
 
   const sites = await db
-    .prepare(`SELECT * FROM sites WHERE enabled = 1 ORDER BY id ASC LIMIT 60`)
+    .prepare(`SELECT * FROM sites WHERE enabled = 1 ORDER BY id ASC`)
     .all<SiteRow>();
 
   let ok = 0;
