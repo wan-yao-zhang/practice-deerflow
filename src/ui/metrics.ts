@@ -7,6 +7,7 @@ import { escapeHtml, layout } from "./layout";
 import {
   POSITION_CHART_COLORS,
   buildChartDates,
+  renderClicksSparklineSvg,
   renderPositionChartHtml,
   type PositionChartSeries,
 } from "./position-chart";
@@ -214,6 +215,35 @@ async function loadPositionChartSeries(
   return { dates, series };
 }
 
+async function loadGscClicksBySite(
+  db: D1Database,
+  sites: Array<{ id: string; connected: number }>,
+  windowDays: number,
+): Promise<Map<string, Map<string, number>>> {
+  const connected = sites.filter((s) => s.connected === 1);
+  const out = new Map<string, Map<string, number>>();
+  for (const s of connected) out.set(s.id, new Map());
+  if (!connected.length) return out;
+
+  const placeholders = connected.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT metrics_site_id, date, clicks
+       FROM metrics_gsc_daily
+       WHERE metrics_site_id IN (${placeholders})
+         AND date >= date('now', ?)
+       ORDER BY date ASC`,
+    )
+    .bind(...connected.map((s) => s.id), `-${windowDays - 1} days`)
+    .all<{ metrics_site_id: string; date: string; clicks: number }>();
+
+  for (const r of rows.results || []) {
+    const m = out.get(r.metrics_site_id);
+    if (m) m.set(r.date, r.clicks ?? 0);
+  }
+  return out;
+}
+
 function singleSitePositionSeries(
   site: { id: string; host: string },
   gscRows: MetricsGscDailyRow[],
@@ -281,9 +311,11 @@ metricsRoutes.get("/", async (c) => {
   const oauthReady = googleMetricsConfigured(c.env);
 
   const dash = "—";
+  const chartDates = buildChartDates(OVERVIEW_WINDOW_DAYS);
+  const clicksBySite = await loadGscClicksBySite(db, sites.results || [], OVERVIEW_WINDOW_DAYS);
 
   const tableRows = await Promise.all(
-    (sites.results || []).map(async (site) => {
+    (sites.results || []).map(async (site, siteIndex) => {
       const connected = site.connected === 1;
       const siteCell = `<a href="/metrics/${escapeHtml(site.id)}"><strong>${escapeHtml(site.host)}</strong></a>${
         site.display_name && connected
@@ -296,7 +328,7 @@ metricsRoutes.get("/", async (c) => {
       }`;
 
       if (!connected) {
-        const cols = [dash, dash, dash, dash, dash, dash, dash];
+        const cols = [dash, dash, dash, dash, dash, dash, dash, dash];
         return `<tr>
           <td>${siteCell}</td>
           ${cols.map((c) => `<td class="muted">${c}</td>`).join("")}
@@ -305,6 +337,13 @@ metricsRoutes.get("/", async (c) => {
 
       const gsc = await gscWindowRollup(db, site.id);
       const ga4 = await ga4WindowRollup(db, site.id);
+      const sparkColor = POSITION_CHART_COLORS[siteIndex % POSITION_CHART_COLORS.length]!;
+      const sparkline = renderClicksSparklineSvg({
+        dates: chartDates,
+        byDate: clicksBySite.get(site.id) ?? new Map(),
+        color: sparkColor,
+        ariaLabel: `${site.host} 近 ${OVERVIEW_WINDOW_DAYS} 天 GSC 点击`,
+      });
 
       return `<tr>
         <td>${siteCell}</td>
@@ -315,6 +354,7 @@ metricsRoutes.get("/", async (c) => {
         <td>${ga4 ? num(ga4.users) : dash}</td>
         <td>${ga4 ? num(ga4.pageviews) : dash}</td>
         <td>${ga4?.avg_session_duration != null ? fmtDuration(ga4.avg_session_duration) : dash}</td>
+        <td class="sparkline-cell">${sparkline}</td>
       </tr>`;
     }),
   );
@@ -340,10 +380,11 @@ metricsRoutes.get("/", async (c) => {
               <th>用户</th>
               <th>浏览量</th>
               <th>均时长</th>
+              <th>点击趋势</th>
             </tr>
           </thead>
           <tbody>
-            ${tableRows.join("") || `<tr><td colspan="8" class="empty">暂无站点</td></tr>`}
+            ${tableRows.join("") || `<tr><td colspan="9" class="empty">暂无站点</td></tr>`}
           </tbody>
         </table>
       </div>

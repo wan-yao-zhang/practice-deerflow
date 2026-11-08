@@ -157,3 +157,41 @@ export function renderPositionChartHtml(opts: {
   <div class="position-legend">${legend}</div>
 </div>`;
 }
+
+/** Compact daily GSC clicks sparkline for table cells. */
+export function renderClicksSparklineSvg(opts: {
+  dates: string[];
+  byDate: Map<string, number>;
+  color?: string;
+  ariaLabel?: string;
+}): string {
+  const W = 128;
+  const H = 30;
+  const padX = 3;
+  const padY = 3;
+  const color = opts.color ?? "#3b82f6";
+  const plotW = W - padX * 2;
+  const plotH = H - padY * 2;
+  const n = opts.dates.length;
+  if (!n) return `<span class="muted">—</span>`;
+
+  const values = opts.dates.map((d) => opts.byDate.get(d) ?? 0);
+  if (!values.some((v) => v > 0)) return `<span class="muted">—</span>`;
+
+  const max = Math.max(...values, 1);
+  let d = "";
+  const dots: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = padX + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+    const v = values[i]!;
+    const y = padY + plotH - (v / max) * plotH;
+    if (i === 0) d += `M ${x.toFixed(2)} ${y.toFixed(2)}`;
+    else d += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    dots.push(
+      `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="1.4" fill="${color}"><title>${escapeSvgText(opts.dates[i]!)}: ${v} 点击</title></circle>`,
+    );
+  }
+
+  const label = escapeSvgText(opts.ariaLabel ?? "日度点击趋势");
+  return `<svg class="clicks-sparkline" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${label}"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />${dots.join("")}</svg>`;
+}
