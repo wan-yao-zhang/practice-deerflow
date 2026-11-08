@@ -113,22 +113,6 @@ export function layout(opts: {
     .meta-row { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
     .url { font-family: var(--mono); font-size: 12px; word-break: break-all; }
     .empty { padding: 28px; text-align: center; color: var(--muted); }
-    .metric-card h3 { margin: 0 0 8px; font-size: 15px; }
-    .metric-big { font-size: 28px; font-weight: 650; margin: 4px 0; }
-    .metric-strip {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;
-    }
-    .metric-kpi {
-      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-      padding: 10px 12px;
-    }
-    .metric-kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-    .metric-kpi .value { font-size: 22px; font-weight: 700; margin-top: 4px; line-height: 1.2; }
-    .metric-kpi.rank .value { color: #fcd34d; }
-    .metric-kpi.clicks .value { color: #86efac; }
-    .metric-kpi.impr .value { color: #93c5fd; }
-    .metrics-overview-list { display: flex; flex-direction: column; gap: 12px; }
-    .metrics-overview-list .metric-card { margin-bottom: 0; }
     .tdh dt { color: var(--muted); font-size: 12px; margin-top: 8px; }
     .tdh dd { margin: 2px 0 0; }
     footer {
