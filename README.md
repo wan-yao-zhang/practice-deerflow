@@ -54,6 +54,7 @@ npx wrangler secret put GOOGLE_REFRESH_TOKEN
 | askauraloom.com | `sc-domain:askauraloom.com` | `properties/551587330` |
 | mangapoly.com | `sc-domain:mangapoly.com` | `properties/557268389` |
 | chironpath.com | `sc-domain:chironpath.com` | `properties/553867883` |
+| hingesignals.com | `sc-domain:hingesignals.com` | `properties/545979735` (not `546000661`) |
 | rapsona.online | — | — (shows **未接入** in UI) |
 
 **Manual metrics sync** (same `ADMIN_TOKEN` as sitemap scans):

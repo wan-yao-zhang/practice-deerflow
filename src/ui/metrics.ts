@@ -281,7 +281,7 @@ metricsRoutes.get("/", async (c) => {
           : `<p class="status fail" style="font-size:13px">未配置 GOOGLE_* secrets，同步将跳过。见 README。</p>`
       }
     </div>
-    <div class="grid grid-2">${cards.join("")}</div>`;
+    <div class="metrics-overview-list">${cards.join("")}</div>`;
 
   return c.html(layout({ title: "数据看板", active: "metrics", body }));
 });

@@ -1,0 +1,45 @@
+{
+  "auth": {
+    "type": "oauth_user",
+    "note": "Credentials via Worker secrets GOOGLE_* — not stored in repo"
+  },
+  "sites": [
+    {
+      "id": "askauraloom",
+      "host": "askauraloom.com",
+      "gsc": "sc-domain:askauraloom.com",
+      "ga4_property": "properties/551587330",
+      "ga4_name": "auraloom"
+    },
+    {
+      "id": "mangapoly",
+      "host": "mangapoly.com",
+      "gsc": "sc-domain:mangapoly.com",
+      "ga4_property": "properties/557268389",
+      "ga4_name": "manga-translator"
+    },
+    {
+      "id": "chironpath",
+      "host": "chironpath.com",
+      "gsc": "sc-domain:chironpath.com",
+      "ga4_property": "properties/553867883",
+      "ga4_name": "chironpath"
+    },
+    {
+      "id": "hingesignals",
+      "host": "hingesignals.com",
+      "gsc": "sc-domain:hingesignals.com",
+      "ga4_property": "properties/545979735",
+      "ga4_name": "hingesignals",
+      "note": "Use 545979735 only; properties/546000661 is a duplicate name with no data"
+    },
+    {
+      "id": "rapsona",
+      "host": "rapsona.online",
+      "gsc": null,
+      "ga4_property": null,
+      "ga4_name": null,
+      "note": "not found in this Google account GSC/GA4"
+    }
+  ]
+}

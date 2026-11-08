@@ -127,6 +127,8 @@ export function layout(opts: {
     .metric-kpi.rank .value { color: #fcd34d; }
     .metric-kpi.clicks .value { color: #86efac; }
     .metric-kpi.impr .value { color: #93c5fd; }
+    .metrics-overview-list { display: flex; flex-direction: column; gap: 12px; }
+    .metrics-overview-list .metric-card { margin-bottom: 0; }
     .tdh dt { color: var(--muted); font-size: 12px; margin-top: 8px; }
     .tdh dd { margin: 2px 0 0; }
     footer {
