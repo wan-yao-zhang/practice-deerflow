@@ -45,6 +45,7 @@ interface Ga4WindowRollup {
   sessions: number;
   users: number;
   pageviews: number;
+  avg_session_duration: number | null;
 }
 
 /** Last N calendar days in D1 (sync window). GSC CTR = clicks/impressions; rank = impression-weighted avg position. */
@@ -107,7 +108,15 @@ async function ga4WindowRollup(
          MAX(date) AS to_date,
          COALESCE(SUM(sessions), 0) AS sessions,
          COALESCE(SUM(users), 0) AS users,
-         COALESCE(SUM(pageviews), 0) AS pageviews
+         COALESCE(SUM(pageviews), 0) AS pageviews,
+         COALESCE(SUM(
+           CASE WHEN avg_session_duration IS NOT NULL AND sessions > 0
+             THEN avg_session_duration * sessions ELSE 0 END
+         ), 0) AS duration_weighted,
+         COALESCE(SUM(
+           CASE WHEN avg_session_duration IS NOT NULL AND sessions > 0
+             THEN sessions ELSE 0 END
+         ), 0) AS duration_sessions
        FROM metrics_ga4_daily
        WHERE metrics_site_id = ?
          AND date >= date('now', ?)`,
@@ -120,9 +129,15 @@ async function ga4WindowRollup(
       sessions: number;
       users: number;
       pageviews: number;
+      duration_weighted: number;
+      duration_sessions: number;
     }>();
 
   if (!row || row.days === 0) return null;
+
+  const durationSessions = row.duration_sessions ?? 0;
+  const avg_session_duration =
+    durationSessions > 0 ? (row.duration_weighted ?? 0) / durationSessions : null;
 
   return {
     days: row.days,
@@ -131,19 +146,8 @@ async function ga4WindowRollup(
     sessions: row.sessions ?? 0,
     users: row.users ?? 0,
     pageviews: row.pageviews ?? 0,
+    avg_session_duration,
   };
-}
-
-function windowRangeLabel(
-  rollup: { days: number; fromDate: string | null; toDate: string | null },
-  windowDays: number,
-): string {
-  if (rollup.fromDate && rollup.toDate) {
-    return rollup.fromDate === rollup.toDate
-      ? rollup.toDate
-      : `${rollup.fromDate} – ${rollup.toDate}`;
-  }
-  return rollup.days < windowDays ? `近 ${rollup.days} 天（已同步）` : `近 ${windowDays} 天`;
 }
 
 function latestTopQueriesFromRows(
@@ -198,90 +202,74 @@ metricsRoutes.get("/", async (c) => {
 
   const oauthReady = googleMetricsConfigured(c.env);
 
-  const cards = await Promise.all(
+  const dash = "—";
+
+  const tableRows = await Promise.all(
     (sites.results || []).map(async (site) => {
       const connected = site.connected === 1;
-      const badge = connected
-        ? `<span class="status ok">已接入</span>`
-        : `<span class="status pending">未接入</span>`;
+      const siteCell = `<a href="/metrics/${escapeHtml(site.id)}"><strong>${escapeHtml(site.host)}</strong></a>${
+        site.display_name && connected
+          ? `<div class="muted" style="font-size:12px">${escapeHtml(site.display_name)}</div>`
+          : ""
+      }${!connected ? `<div class="muted" style="font-size:12px">未接入</div>` : ""}${
+        site.last_sync_error && connected
+          ? `<div class="status fail" style="font-size:11px;margin-top:4px">${escapeHtml(site.last_sync_error)}</div>`
+          : ""
+      }`;
 
       if (!connected) {
-        return `<div class="card metric-card">
-          <h3><a href="/metrics/${escapeHtml(site.id)}">${escapeHtml(site.host)}</a></h3>
-          <div class="meta-row">${badge}</div>
-          <p class="muted">此站点尚未关联 GSC / GA4，无指标数据。</p>
-        </div>`;
+        const cols = [dash, dash, dash, dash, dash, dash, dash];
+        return `<tr>
+          <td>${siteCell}</td>
+          ${cols.map((c) => `<td class="muted">${c}</td>`).join("")}
+        </tr>`;
       }
 
       const gsc = await gscWindowRollup(db, site.id);
       const ga4 = await ga4WindowRollup(db, site.id);
-      const gscRange = gsc ? windowRangeLabel(gsc, OVERVIEW_WINDOW_DAYS) : null;
-      const ga4Range = ga4 ? windowRangeLabel(ga4, OVERVIEW_WINDOW_DAYS) : null;
 
-      return `<div class="card metric-card">
-        <h3><a href="/metrics/${escapeHtml(site.id)}">${escapeHtml(site.host)}</a></h3>
-        <div class="meta-row">
-          ${badge}
-          ${site.display_name ? `<span>${escapeHtml(site.display_name)}</span>` : ""}
-        </div>
-        <div style="margin-top:12px">
-          <div class="muted" style="font-size:12px;margin-bottom:6px">
-            GSC · 近 28 天合计
-            ${gscRange ? `<span>（${escapeHtml(gscRange)}）</span>` : ""}
-          </div>
-          ${
-            gsc
-              ? `<div class="metric-strip">
-            <div class="metric-kpi clicks">
-              <div class="label">点击</div>
-              <div class="value">${num(gsc.clicks)}</div>
-            </div>
-            <div class="metric-kpi impr">
-              <div class="label">展示</div>
-              <div class="value">${num(gsc.impressions)}</div>
-            </div>
-            <div class="metric-kpi rank">
-              <div class="label">平均排名</div>
-              <div class="value">${num(gsc.position)}</div>
-            </div>
-          </div>
-          <p class="muted" style="font-size:12px;margin:8px 0 0">
-            CTR ${pct(gsc.ctr)}（点击÷展示）· 排名按展示加权平均
-          </p>`
-              : `<p class="muted" style="font-size:13px">暂无 GSC 快照，请先同步。</p>`
-          }
-        </div>
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-          <div class="muted" style="font-size:12px;margin-bottom:6px">
-            GA4 · 近 28 天合计
-            ${ga4Range ? `<span>（${escapeHtml(ga4Range)}）</span>` : ""}
-          </div>
-          ${
-            ga4
-              ? `<div class="muted" style="font-size:13px">
-            会话 <strong style="color:var(--text);font-size:16px">${num(ga4.sessions)}</strong>
-            · 用户 ${num(ga4.users)} · 浏览量 ${num(ga4.pageviews)}
-          </div>`
-              : `<p class="muted" style="font-size:13px">暂无 GA4 快照。</p>`
-          }
-        </div>
-        ${site.last_sync_at ? `<p class="muted" style="font-size:12px;margin-top:10px">上次同步：${escapeHtml(toShanghai(site.last_sync_at))}</p>` : ""}
-        ${site.last_sync_error ? `<p class="status fail" style="font-size:12px">${escapeHtml(site.last_sync_error)}</p>` : ""}
-      </div>`;
+      return `<tr>
+        <td>${siteCell}</td>
+        <td>${gsc?.position != null ? num(gsc.position) : dash}</td>
+        <td>${gsc ? num(gsc.impressions) : dash}</td>
+        <td>${gsc ? num(gsc.clicks) : dash}</td>
+        <td>${ga4 ? num(ga4.sessions) : dash}</td>
+        <td>${ga4 ? num(ga4.users) : dash}</td>
+        <td>${ga4 ? num(ga4.pageviews) : dash}</td>
+        <td>${ga4?.avg_session_duration != null ? fmtDuration(ga4.avg_session_duration) : dash}</td>
+      </tr>`;
     }),
   );
 
   const body = `
     <div class="card">
       <h2>数据看板</h2>
-      <p class="muted">多站点 Google Search Console + GA4 日快照。总览为<strong style="color:var(--text);font-weight:600">近 28 天合计</strong>（避免 GSC 延迟导致「最近日」全 0）。定时任务在每日 sitemap 扫描后拉取近 28 天数据。</p>
+      <p class="muted" style="font-size:13px;margin-bottom:8px">下表为近 ${OVERVIEW_WINDOW_DAYS} 天合计（GSC 排名按展示加权；GA4 均时长按会话加权）。</p>
       ${
         oauthReady
-          ? `<p class="status ok" style="font-size:13px">OAuth 凭据已配置（Worker secrets）。</p>`
+          ? ""
           : `<p class="status fail" style="font-size:13px">未配置 GOOGLE_* secrets，同步将跳过。见 README。</p>`
       }
-    </div>
-    <div class="metrics-overview-list">${cards.join("")}</div>`;
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>站点</th>
+              <th>排名</th>
+              <th>曝光</th>
+              <th>点击</th>
+              <th>会话</th>
+              <th>用户</th>
+              <th>浏览量</th>
+              <th>均时长</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows.join("") || `<tr><td colspan="8" class="empty">暂无站点</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 
   return c.html(layout({ title: "数据看板", active: "metrics", body }));
 });
