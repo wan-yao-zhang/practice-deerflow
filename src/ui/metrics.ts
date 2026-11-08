@@ -1,6 +1,6 @@
 import type { GscTopQuery, MetricsGa4DailyRow, MetricsGscDailyRow, MetricsSiteRow } from "../lib/metrics-types";
 import { googleMetricsConfigured } from "../lib/google-auth";
-import { syncAllMetrics } from "../metrics/sync";
+import { DEFAULT_LOOKBACK_DAYS, syncAllMetrics } from "../metrics/sync";
 import { verifyAdminToken } from "../scan/runner";
 import { toShanghai } from "../lib/time";
 import { escapeHtml, layout } from "./layout";
@@ -26,7 +26,7 @@ function fmtDuration(sec: number | null | undefined): string {
   return m > 0 ? `${m}m ${r}s` : `${r}s`;
 }
 
-const OVERVIEW_WINDOW_DAYS = 7;
+const OVERVIEW_WINDOW_DAYS = DEFAULT_LOOKBACK_DAYS;
 
 interface GscWindowRollup {
   days: number;
@@ -169,8 +169,11 @@ async function metricsSyncHandler(
   if (!ok) return c.json({ error: "unauthorized" }, 401);
 
   const siteId = c.req.query("site_id") || undefined;
-  const lookback = Number(c.req.query("lookback_days") || "7");
-  const lookbackDays = Number.isFinite(lookback) && lookback > 0 && lookback <= 28 ? lookback : 7;
+  const lookback = Number(c.req.query("lookback_days") || String(DEFAULT_LOOKBACK_DAYS));
+  const lookbackDays =
+    Number.isFinite(lookback) && lookback > 0 && lookback <= DEFAULT_LOOKBACK_DAYS
+      ? lookback
+      : DEFAULT_LOOKBACK_DAYS;
   const bg = c.req.query("background") === "1";
 
   const run = () => syncAllMetrics(c.env, { lookbackDays, siteId });
@@ -223,7 +226,7 @@ metricsRoutes.get("/", async (c) => {
         </div>
         <div style="margin-top:12px">
           <div class="muted" style="font-size:12px;margin-bottom:6px">
-            GSC · 近 7 天合计
+            GSC · 近 28 天合计
             ${gscRange ? `<span>（${escapeHtml(gscRange)}）</span>` : ""}
           </div>
           ${
@@ -250,7 +253,7 @@ metricsRoutes.get("/", async (c) => {
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
           <div class="muted" style="font-size:12px;margin-bottom:6px">
-            GA4 · 近 7 天合计
+            GA4 · 近 28 天合计
             ${ga4Range ? `<span>（${escapeHtml(ga4Range)}）</span>` : ""}
           </div>
           ${
@@ -271,7 +274,7 @@ metricsRoutes.get("/", async (c) => {
   const body = `
     <div class="card">
       <h2>数据看板</h2>
-      <p class="muted">多站点 Google Search Console + GA4 日快照。总览为<strong style="color:var(--text);font-weight:600">近 7 天合计</strong>（避免 GSC 延迟导致「最近日」全 0）。定时任务在每日 sitemap 扫描后拉取近 7 天数据。</p>
+      <p class="muted">多站点 Google Search Console + GA4 日快照。总览为<strong style="color:var(--text);font-weight:600">近 28 天合计</strong>（避免 GSC 延迟导致「最近日」全 0）。定时任务在每日 sitemap 扫描后拉取近 28 天数据。</p>
       ${
         oauthReady
           ? `<p class="status ok" style="font-size:13px">OAuth 凭据已配置（Worker secrets）。</p>`
