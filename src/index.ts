@@ -9,11 +9,14 @@ import { daysAgoUtc, shanghaiTodayBoundsUtc, toShanghai } from "./lib/time";
 import { ALL_TAGS, TAG_LABELS, type DiscoveryRow, type SiteRow, type TagKey } from "./lib/types";
 import { refreshNew7dCounts, runAllScans, scanSite, verifyAdminToken } from "./scan/runner";
 import { escapeHtml, layout } from "./ui/layout";
+import { metricsRoutes } from "./ui/metrics";
+import { syncAllMetrics } from "./metrics/sync";
 
 type AppEnv = { Bindings: Env };
 
 const app = new Hono<AppEnv>();
 app.route("/keywords", keywordRoutes);
+app.route("/metrics", metricsRoutes);
 
 function normalizeDomain(input: string): string | null {
   let s = input.trim().toLowerCase();
@@ -656,10 +659,15 @@ app.get("/api/scan", async (c) => {
 
 app.get("/api/health", async (c) => {
   const count = await c.env.DB.prepare(`SELECT COUNT(*) as n FROM sites`).first<{ n: number }>();
+  const metricsCount = await c.env.DB
+    .prepare(`SELECT COUNT(*) as n FROM metrics_sites`)
+    .first<{ n: number }>()
+    .catch(() => ({ n: 0 }));
   return c.json({
     ok: true,
     app: c.env.APP_NAME,
     sites: count?.n ?? 0,
+    metrics_sites: metricsCount?.n ?? 0,
     cron: "0 2 * * * UTC (= 10:00 Asia/Shanghai)",
   });
 });
@@ -670,7 +678,13 @@ export default {
     console.log(
       JSON.stringify({ message: "cron_fired", cron: event.cron, scheduledTime: event.scheduledTime }),
     );
-    ctx.waitUntil(runAllScans(env, "cron"));
+    ctx.waitUntil(
+      (async () => {
+        await runAllScans(env, "cron");
+        const metrics = await syncAllMetrics(env);
+        console.log(JSON.stringify({ message: "metrics_sync_done", ...metrics }));
+      })(),
+    );
   },
 } satisfies ExportedHandler<Env>;
 
