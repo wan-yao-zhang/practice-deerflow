@@ -115,6 +115,8 @@ export function layout(opts: {
     .empty { padding: 28px; text-align: center; color: var(--muted); }
     .position-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
     .position-legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+    .sparkline-cell { min-width: 132px; vertical-align: middle; }
+    .clicks-sparkline { display: block; }
     .tdh dt { color: var(--muted); font-size: 12px; margin-top: 8px; }
     .tdh dd { margin: 2px 0 0; }
     footer {
