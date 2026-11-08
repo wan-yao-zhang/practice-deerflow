@@ -10,7 +10,7 @@ export function escapeHtml(s: string | null | undefined): string {
 
 export function layout(opts: {
   title: string;
-  active: "home" | "sites" | "runs" | "keywords";
+  active: "home" | "sites" | "runs" | "keywords" | "metrics";
   body: string;
   flash?: string | null;
 }): string {
@@ -113,6 +113,8 @@ export function layout(opts: {
     .meta-row { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
     .url { font-family: var(--mono); font-size: 12px; word-break: break-all; }
     .empty { padding: 28px; text-align: center; color: var(--muted); }
+    .metric-card h3 { margin: 0 0 8px; font-size: 15px; }
+    .metric-big { font-size: 28px; font-weight: 650; margin: 4px 0; }
     .tdh dt { color: var(--muted); font-size: 12px; margin-top: 8px; }
     .tdh dd { margin: 2px 0 0; }
     footer {
@@ -134,6 +136,7 @@ export function layout(opts: {
       <nav>
         ${nav("home", "/", "新页面")}
         ${nav("keywords", "/keywords", "关键词动态")}
+        ${nav("metrics", "/metrics", "数据看板")}
         ${nav("sites", "/sites", "站点库")}
         ${nav("runs", "/runs", "扫描日志")}
       </nav>
