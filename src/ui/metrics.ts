@@ -4,6 +4,12 @@ import { DEFAULT_LOOKBACK_DAYS, syncAllMetrics } from "../metrics/sync";
 import { verifyAdminToken } from "../scan/runner";
 import { toShanghai } from "../lib/time";
 import { escapeHtml, layout } from "./layout";
+import {
+  POSITION_CHART_COLORS,
+  buildChartDates,
+  renderPositionChartHtml,
+  type PositionChartSeries,
+} from "./position-chart";
 import { Hono } from "hono";
 
 type AppEnv = { Bindings: Env };
@@ -159,6 +165,78 @@ function latestTopQueriesFromRows(
   return null;
 }
 
+function gscDayHasPosition(impressions: number, position: number): boolean {
+  return impressions > 0 && Number.isFinite(position);
+}
+
+async function loadPositionChartSeries(
+  db: D1Database,
+  sites: Array<{ id: string; host: string; connected: number }>,
+  windowDays: number,
+): Promise<{ dates: string[]; series: PositionChartSeries[] }> {
+  const connected = sites.filter((s) => s.connected === 1);
+  const dates = buildChartDates(windowDays);
+  if (!connected.length) return { dates, series: [] };
+
+  const placeholders = connected.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT metrics_site_id, date, position, impressions
+       FROM metrics_gsc_daily
+       WHERE metrics_site_id IN (${placeholders})
+         AND date >= date('now', ?)
+       ORDER BY date ASC`,
+    )
+    .bind(...connected.map((s) => s.id), `-${windowDays - 1} days`)
+    .all<{
+      metrics_site_id: string;
+      date: string;
+      position: number;
+      impressions: number;
+    }>();
+
+  const bySite = new Map<string, Map<string, number>>();
+  for (const site of connected) bySite.set(site.id, new Map());
+
+  for (const r of rows.results || []) {
+    if (!gscDayHasPosition(r.impressions, r.position)) continue;
+    const m = bySite.get(r.metrics_site_id);
+    if (m) m.set(r.date, r.position);
+  }
+
+  const series: PositionChartSeries[] = connected.map((site, i) => ({
+    id: site.id,
+    label: site.host,
+    color: POSITION_CHART_COLORS[i % POSITION_CHART_COLORS.length]!,
+    byDate: bySite.get(site.id) ?? new Map(),
+  }));
+
+  return { dates, series };
+}
+
+function singleSitePositionSeries(
+  site: { id: string; host: string },
+  gscRows: MetricsGscDailyRow[],
+  windowDays: number,
+): { dates: string[]; series: PositionChartSeries[] } {
+  const dates = buildChartDates(windowDays);
+  const byDate = new Map<string, number>();
+  for (const r of gscRows) {
+    if (gscDayHasPosition(r.impressions, r.position)) byDate.set(r.date, r.position);
+  }
+  return {
+    dates,
+    series: [
+      {
+        id: site.id,
+        label: site.host,
+        color: POSITION_CHART_COLORS[0]!,
+        byDate,
+      },
+    ],
+  };
+}
+
 export const metricsRoutes = new Hono<AppEnv>();
 
 async function metricsSyncHandler(
@@ -269,6 +347,13 @@ metricsRoutes.get("/", async (c) => {
           </tbody>
         </table>
       </div>
+    </div>
+    <div class="card">
+      ${renderPositionChartHtml({
+        title: "近 28 天平均排名曲线",
+        subtitle: "GSC 日均 position；无展示日断线不连。",
+        ...(await loadPositionChartSeries(db, sites.results || [], OVERVIEW_WINDOW_DAYS)),
+      })}
     </div>`;
 
   return c.html(layout({ title: "数据看板", active: "metrics", body }));
@@ -327,6 +412,17 @@ metricsRoutes.get("/:siteId", async (c) => {
   const topSnapshot = latestTopQueriesFromRows(merged);
   const latestTop = topSnapshot?.top ?? [];
 
+  const chartData = singleSitePositionSeries(
+    site,
+    gscRows.results || [],
+    30,
+  );
+  const positionChart = renderPositionChartHtml({
+    title: `${site.host} · 平均排名曲线`,
+    subtitle: "近 30 天 GSC 日均 position（无展示日断线）。",
+    ...chartData,
+  });
+
   const tableRows =
     merged.length === 0
       ? `<tr><td colspan="9" class="empty">尚无日快照，请触发同步或等待定时任务。</td></tr>`
@@ -378,6 +474,10 @@ metricsRoutes.get("/:siteId", async (c) => {
       <div class="actions">
         <a class="btn secondary" href="/metrics">返回总览</a>
       </div>
+    </div>
+
+    <div class="card">
+      ${positionChart}
     </div>
 
     <div class="card">
