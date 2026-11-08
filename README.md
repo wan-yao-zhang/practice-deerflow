@@ -60,13 +60,13 @@ npx wrangler secret put GOOGLE_REFRESH_TOKEN
 
 ```bash
 curl -X POST -H "x-admin-token: YOUR_ADMIN_TOKEN" "https://githubbox.info/metrics/sync"
-curl "https://githubbox.info/metrics/sync?token=YOUR_ADMIN_TOKEN&site_id=askauraloom&lookback_days=7"
+curl "https://githubbox.info/metrics/sync?token=YOUR_ADMIN_TOKEN&site_id=askauraloom&lookback_days=28"
 curl "https://githubbox.info/metrics/sync?token=YOUR_ADMIN_TOKEN&background=1"
 ```
 
-Daily cron (`0 2 * * *` UTC) runs the existing sitemap scan, then pulls the last **7** days of GSC + GA4 into D1 (`metrics_gsc_daily`, `metrics_ga4_daily`).
+Daily cron (`0 2 * * *` UTC) runs the existing sitemap scan, then pulls the last **28** days of GSC + GA4 into D1 (`metrics_gsc_daily`, `metrics_ga4_daily`). Overview cards show **近 28 天** rollups (clicks, impressions, weighted avg position).
 
-UI: nav **数据看板** → `/metrics` overview cards; `/metrics/:site` daily table + top queries.
+UI: nav **数据看板** → `/metrics` overview cards; `/metrics/:site` daily table (30-day window) + top queries.
 
 Note: Account API tokens without Workers Scripts Write must deploy via the Cloudflare dashboard/API. This project’s production deploy used the Cloudflare MCP upload path.
 

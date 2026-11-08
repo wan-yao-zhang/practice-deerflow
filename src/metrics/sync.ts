@@ -3,7 +3,7 @@ import { fetchGa4DayTotals } from "../lib/google-ga4";
 import { fetchGscDayTotals, fetchGscTopQueries } from "../lib/google-gsc";
 import type { MetricsSiteRow } from "../lib/metrics-types";
 
-const DEFAULT_LOOKBACK_DAYS = 7;
+export const DEFAULT_LOOKBACK_DAYS = 28;
 
 function utcDateString(d: Date): string {
   return d.toISOString().slice(0, 10);
